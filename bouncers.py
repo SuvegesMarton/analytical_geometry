@@ -4,7 +4,7 @@ from math import sin, cos, tan
 
 class Bouncer:
     # starting coords and starting directions
-    def __init__(self, x, y, direction, rotation_degree=0.0, delete_previous_pos=True):
+    def __init__(self, x, y, direction):
         self.last_x = x
         self.last_y = y
         self.intersections = [[x, y, None]]
@@ -13,7 +13,6 @@ class Bouncer:
         self.last_direction = direction
         self.type = 'bouncer'
         self.visualization = []
-
 
     def add_coordinate_system_reference(self, cs):
         self.cs = cs
@@ -25,8 +24,8 @@ class Bouncer:
 
     def calculate_next_intersection(self):
         # vector parallel to the bouncer line:
-        vector_x = cos(self.last_direction)
-        vector_y = sin(self.last_direction)
+        vector_x = round(cos(self.last_direction), 10)
+        vector_y = round(sin(self.last_direction), 10)
         # equation of the line
         equation_x_coefficient = -vector_y
         equation_y_coefficient = vector_x
@@ -42,8 +41,17 @@ class Bouncer:
         # choose the relevant intersection
         for i in range(len(intersections)):
             # if the intersection is the current location of the bouncer, ignore the intersection
+            # check if it is the same intersection by accurate coordinates. This can fail at extremely large numbers.
             if round(intersections[i][0], 5) == round(self.last_x, 5) and round(intersections[i][1], 5) == round(self.last_y, 5):
                 continue
+            #  check if it is the same intersection by the ratio of the coordinates.
+            #  Even large numbers will be ruled out, if needed. Zeros have to be filtered for division!
+            elif self.last_x != 0 and self.last_y != 0:
+                ratio_limit = 0.0001
+                if 0 <= abs(1 - intersections[i][0] / self.last_x) <= ratio_limit and\
+                        0 <= abs(1 - intersections[i][1] / self.last_y) <= ratio_limit:
+                    continue
+
 
             if vector_x == 0:
                 if (intersections[i][1] - self.last_y) / abs(intersections[i][1] - self.last_y) == vector_y / abs(vector_y):
@@ -67,40 +75,28 @@ class Bouncer:
                             smallest_distance = distance
                             closest_intersection = intersections[i]
 
-        # if there is no intersection, draw to the GUI borders
+        # if there is no intersection, mark a point along the bouncer line as final intersection. Drawing function will
+        # complete this to the borders of the GUI.
         if closest_intersection is None:
-            left_border, right_border, upper_border, lower_border = self.cs.get_gui_edge_with_system_coords()
-            if round(vector_x, 8) == 0:
-                if vector_y < 0:
-                    closest_intersection = [self.last_x, lower_border, None]
-                else:
-                    closest_intersection = [self.last_x, upper_border, None]
-
-            else:
-                if vector_x < 0:
-                    closest_intersection = [left_border, self.evaluate_at_x(left_border), None]
-                else:
-                    closest_intersection = [right_border, self.evaluate_at_x(right_border), None]
-
-        # calculate bounce-off angle
-        if closest_intersection[2] is None: # if the bouncer has no more intersections (hits a border)
             new_direction = None
+            closest_intersection = [self.last_x + vector_x, self.last_y + vector_y, None]
 
 
         else:
             # get a vector perpendicular to the line segment hit by the bouncer
             perp_vector = closest_intersection[2].get_perpendicular_vector_at_point(closest_intersection[0], closest_intersection[1])
             # get the angle between the perpendicular vector and the bouncer's direction
-            perp_vector_relative = get_vector_direction(*perp_vector) - self.last_direction
+            perp_vector_relative_angle = get_vector_direction(*perp_vector) - self.last_direction
             collision_angle = get_angle_between_vectors(perp_vector, [vector_x, vector_y])
             # get the angle between perpendicular vector and bouncer between 0 and 90 degrees, by eliminating angles
             # calculated on the -1*perp_vector 's data
             if collision_angle > pi / 2:
                 collision_angle = pi - collision_angle
-            new_direction = self.last_direction - 2 * (pi/2 - collision_angle)
-            if perp_vector_relative % pi > pi / 2:
-                new_direction = self.last_direction + 2 * (pi/2 - collision_angle)
 
+            if perp_vector_relative_angle % pi >= pi / 2:
+                new_direction = self.last_direction + 2 * (pi/2 - collision_angle)
+            else:
+                new_direction = self.last_direction - 2 * (pi / 2 - collision_angle)
 
         # set new values for the bouncer
         self.last_x = closest_intersection[0]
@@ -120,10 +116,10 @@ class Bouncer:
             number_of_intersections += 1
         self.already_calculated_intersections = True
 
-    def draw(self, color='cyan', width=1):
-        if not self.already_calculated_intersections:
+    def draw(self, color='cyan', width=1, recalculate=False):
+        if not self.already_calculated_intersections or recalculate:
             self.calculate_all_intersections()
-        for i in range(len(self.intersections) - 2):
+        for i in range(len(self.intersections) - 1):
             new_segment = self.cs.canvas.create_line(self.cs.system_coord_to_gui_coord(self.intersections[i][0], self.intersections[i][1]),
                                                      self.cs.system_coord_to_gui_coord(self.intersections[i + 1][0], self.intersections[i + 1][1]),
                                                             fill=color, width=width)
@@ -135,6 +131,7 @@ class Bouncer:
 
             x_direction = self.intersections[-1][0] - self.intersections[-2][0]
             y_direction = self.intersections[-1][1] - self.intersections[-2][1]
+
             last_x, last_y = self.intersections[-2][0], self.intersections[-2][1]
             if round(x_direction, 8) == 0:
                 if y_direction > 0:
@@ -159,6 +156,7 @@ class Bouncer:
                         self.cs.system_coord_to_gui_coord(left_border, last_y),
                         fill=color, width=width)
             else:
+
                 # draw to the nearest vertical border
                 if x_direction > 0:
                     x_distance = right_border - last_x
@@ -180,9 +178,6 @@ class Bouncer:
                                                             fill=color, width=width)
         self.visualization.append(new_segment)
 
-
-
-
     def undraw(self):
         for element in self.visualization:
             self.cs.canvas.delete(element)
@@ -190,9 +185,23 @@ class Bouncer:
         self.last_direction = self.start_direction
 
 
+def rotating_bouncers(x, y, start_direction, end_direction, number_of_bouncers_between, show_only_last=False, delay=0):
+    unit_of_rotation = (end_direction - start_direction) / number_of_bouncers_between
+    for i in range(number_of_bouncers_between + 1):
+        new_bouncer = Bouncer(x, y, start_direction+i*unit_of_rotation)
+        coord_system.add_element(new_bouncer)
+
+
+
 if __name__ == '__main__':
     coord_system, window = setup()
-    coord_system.add_element(Line(x=2, y=2, c=10))
-    coord_system.add_element(Bouncer(0, 0, 0))
+
+    # first add static elements
+    coord_system.add_element(OrderedPolynomial(exponents=[2], coefficients=[1]))
+
+    # then add bouncers
+
+    rotating_bouncers(0, 0, pi, 0, 10)
+
 
     window.mainloop()

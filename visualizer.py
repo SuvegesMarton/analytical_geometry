@@ -122,7 +122,7 @@ def line_ordered_polynomial_intersection(x, y, c, exponents, coefficients):
         if intersection_x is None:
             return None
         else:
-            return [intersection_x, c/x]
+            return [[intersection_x, c/x]]
     else:
         if 1 in exponents:
             coefficients[exponents.index(1)] += x/y
@@ -517,7 +517,7 @@ def setup():
     # create internal coordsystem (different from gui coords)
     coord_system = CoordinateSystem(canvas)
     # set mouse actions for the visualizer window
-    canvas.bind("<Button-1>", lambda effect: coord_system.mouse_left_button_clicked)
+    canvas.bind("<Button-1>", coord_system.mouse_left_button_clicked)
     canvas.bind("<B1-Motion>", coord_system.mouse_drag)
     canvas.bind('<Motion>', coord_system.mouse_motion)
     canvas.bind("<MouseWheel>", coord_system.mouse_scroll)
@@ -529,6 +529,6 @@ def setup():
 if __name__ == '__main__':
     coord_system, window = setup()
     coord_system.add_element(Line())
-
+    coord_system.add_element(Circle())
 
     window.mainloop()
