@@ -103,7 +103,6 @@ class Bouncer:
         self.last_y = closest_intersection[1]
         self.last_direction = new_direction
 
-        # print(self.last_x, self.last_y, self.last_direction)
 
         self.intersections.append(closest_intersection)
 
@@ -197,11 +196,13 @@ if __name__ == '__main__':
     coord_system, window = setup()
 
     # first add static elements
-    coord_system.add_element(OrderedPolynomial(exponents=[2], coefficients=[1]))
+    for i in range(10):
+        for j in range(5):
+            coord_system.add_element(Circle(origo_x=30+j*8, origo_y=-36+i*8,radius=2))
 
     # then add bouncers
 
-    rotating_bouncers(0, 0, pi, 0, 10)
+    rotating_bouncers(0, 0, 0.5, 0.51, 1000)
 
 
     window.mainloop()

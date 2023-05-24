@@ -98,7 +98,6 @@ def line_circle_intersection(lx, ly, c, ox, oy, r):
         # the discriminant of this quadratic equation(b**2 - 4*a*c):
         discriminant = (-2*ly/lx*(c/lx - ox) - 2*oy) ** 2 - 4 * ((ly/lx)**2 + 1) * ((c/lx - ox)**2 + oy**2 - r**2)
         if round(discriminant, 5) < 0:
-            print(discriminant)
             return []
         if round(discriminant, 5) == 0:
             # x = -b / 2 * a
