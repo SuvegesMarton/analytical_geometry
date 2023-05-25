@@ -156,13 +156,22 @@ def get_vector_direction(x, y):
 
 
 def point_element_distance(x, y, element):
-    if element.type == 'circle':
+    if element.type == 'circle' or element.type == 'ball':
         # distance from the middle of the circle
         dist = ((x - element.origo_x) ** 2 + (y - element.origo_y) ** 2) ** 0.5
+        # direction vector to the point from the origo
+        #vector_x = x - element.origo_x
+        #vector_y = y - element.origo_y
+        # vector_x * c, vector_y * c -> closest point on the perimeter
+        # (vector_x * c) ** 2 + (vector_y * c) ** 2 = radius ** 2
+        #c = (element.radius**2 / (vector_x**2 + vector_y**2)) ** 0.5
+
         # return distance from the perimeter
         return abs(dist - element.radius)
-    if element.type == 'line':
-        return abs(x*element.x_coefficient + y*element.y_coefficient - element.c) / (element.x_coefficient ** 2 + element.y_coefficient**2) ** 0.5
+
+    elif element.type == 'line':
+        distance = abs(x*element.x_coefficient + y*element.y_coefficient - element.c) / (element.x_coefficient ** 2 + element.y_coefficient**2) ** 0.5
+        return distance
     else:
         y_at_x = element.evaluate_at_x(x)
         if y_at_x is None:
@@ -229,11 +238,10 @@ class CoordinateSystem:
 
     def complete_redraw(self):
         # delete everything
-        self.canvas.delete(self.x_coefficient_axis)
-        self.canvas.delete(self.y_coefficient_axis)
         for element in self.elements:
             element.undraw()
-
+        self.canvas.delete(self.x_coefficient_axis)
+        self.canvas.delete(self.y_coefficient_axis)
         # redraw everything
         self.draw()
         for element in self.elements:
@@ -256,7 +264,8 @@ class CoordinateSystem:
             if element.type == 'bouncer':
                 continue
             else:
-                if point_element_distance(x, y, element) <= precision_treshold:
+                dist = point_element_distance(x, y, element)
+                if dist <= precision_treshold:
                     elements_at_point.append(element)
         return elements_at_point
 
@@ -348,6 +357,9 @@ class Line:
         # gui variables
         self.line_width = 1
 
+        # variable for the physics.py extension
+        self.active_physics = False
+
     def add_coordinate_system_reference(self, coordinate_system):
         self.cs = coordinate_system
 
@@ -399,6 +411,9 @@ class Circle:
 
         # gui variables
         self.line_width = 1
+
+        # variable for the physics.py extension
+        self.active_physics = False
 
     def add_coordinate_system_reference(self, cs):
         self.cs = cs
@@ -456,6 +471,10 @@ class OrderedPolynomial:
         # gui variables
         self.line_width = 1
 
+        # variable for the physics.py extension
+        self.active_physics = False
+
+
     def add_coordinate_system_reference(self, cs):
         self.cs = cs
 
@@ -506,7 +525,6 @@ class OrderedPolynomial:
         self.visualization = []
 
 
-
 def setup():
     # set window for visualizing stuff
     visualizer_site = tk.Tk()
@@ -527,7 +545,9 @@ def setup():
 
 if __name__ == '__main__':
     coord_system, window = setup()
-    coord_system.add_element(Line())
-    coord_system.add_element(Circle())
+    l = Line()
+    coord_system.add_element(l)
+    c = Circle()
+    coord_system.add_element(c)
 
     window.mainloop()

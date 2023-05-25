@@ -195,6 +195,7 @@ def rotating_bouncers(x, y, start_direction, end_direction, number_of_bouncers_b
 if __name__ == '__main__':
     coord_system, window = setup()
 
+
     # first add static elements
     for i in range(10):
         for j in range(5):
@@ -202,7 +203,7 @@ if __name__ == '__main__':
 
     # then add bouncers
 
-    rotating_bouncers(0, 0, 0.5, 0.51, 1000)
+    rotating_bouncers(0, 0, 0.5, 0.51, 300)
 
 
     window.mainloop()
