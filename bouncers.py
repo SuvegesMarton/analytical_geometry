@@ -1,5 +1,5 @@
 from visualizer import *
-from math import sin, cos, tan
+from math import tan
 
 
 class Bouncer:
@@ -32,7 +32,6 @@ class Bouncer:
         equation_c = equation_x_coefficient * self.last_x + equation_y_coefficient * self.last_y
         # calculate all intersections with other elements
         intersections = self.cs.line_with_anything_intersections(equation_x_coefficient, equation_y_coefficient, equation_c)
-
 
         # find the distances of the intersections
         smallest_distance = 10e10
@@ -81,22 +80,10 @@ class Bouncer:
             new_direction = None
             closest_intersection = [self.last_x + vector_x, self.last_y + vector_y, None]
 
-
         else:
             # get a vector perpendicular to the line segment hit by the bouncer
             perp_vector = closest_intersection[2].get_perpendicular_vector_at_point(closest_intersection[0], closest_intersection[1])
-            # get the angle between the perpendicular vector and the bouncer's direction
-            perp_vector_relative_angle = get_vector_direction(*perp_vector) - self.last_direction
-            collision_angle = get_angle_between_vectors(perp_vector, [vector_x, vector_y])
-            # get the angle between perpendicular vector and bouncer between 0 and 90 degrees, by eliminating angles
-            # calculated on the -1*perp_vector 's data
-            if collision_angle > pi / 2:
-                collision_angle = pi - collision_angle
-
-            if perp_vector_relative_angle % pi >= pi / 2:
-                new_direction = self.last_direction + 2 * (pi/2 - collision_angle)
-            else:
-                new_direction = self.last_direction - 2 * (pi / 2 - collision_angle)
+            new_dir_x, new_dir_y, new_direction = get_bounce_direction_vector_from_vectors(*perp_vector, vector_x, vector_y)
 
         # set new values for the bouncer
         self.last_x = closest_intersection[0]
@@ -191,10 +178,8 @@ def rotating_bouncers(x, y, start_direction, end_direction, number_of_bouncers_b
         coord_system.add_element(new_bouncer)
 
 
-
 if __name__ == '__main__':
     coord_system, window = setup()
-
 
     # first add static elements
     for i in range(10):
