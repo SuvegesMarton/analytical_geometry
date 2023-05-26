@@ -2,7 +2,7 @@ import tkinter as tk
 from matrix_calculations import solve_system_of_2_equations
 from solve_polynomial import main as solvpol
 from solve_polynomial import evaluate as eval_pol
-from math import pi, atan, sqrt
+from math import pi, atan, sqrt, sin, cos
 # dimensions of GUI
 CANVAS_HEIGHT = 900
 CANVAS_WIDTH = 1400
@@ -181,6 +181,36 @@ def point_element_distance(x, y, element):
         for i in range(len(y_at_x)):
             y_at_x[i] = abs(y_at_x[i] - y)
         return min(y_at_x)
+
+
+def get_bounce_direction_vector_from_vectors(surface_perpendicular_x, surface_perpendicular_y, incoming_x, incoming_y):
+    # get the incoming vector's direction
+    if incoming_x == 0:
+        if incoming_y > 0:
+            incoming_direction = pi/2
+        else:
+            incoming_direction = 3*pi/2
+    else:
+        incoming_direction = atan(incoming_y / incoming_x)
+        if incoming_x < 0:
+            incoming_direction += pi
+
+    # get the angle between the perpendicular vector and the bouncer's direction
+    perp_vector_relative_angle = get_vector_direction(surface_perpendicular_x, surface_perpendicular_y) - incoming_direction
+    collision_angle = get_angle_between_vectors([surface_perpendicular_x, surface_perpendicular_y], [incoming_x, incoming_y])
+    # get the angle between perpendicular vector and bouncer between 0 and 90 degrees, by eliminating angles
+    # calculated on the -1*perp_vector 's data
+    if collision_angle > pi / 2:
+        collision_angle = pi - collision_angle
+
+    # get the outgoing vector's direction
+    if perp_vector_relative_angle % pi >= pi / 2:
+        new_direction = incoming_direction + 2 * (pi / 2 - collision_angle)
+    else:
+        new_direction = incoming_direction - 2 * (pi / 2 - collision_angle)
+    out_x = round(cos(new_direction), 10)
+    out_y = round(sin(new_direction), 10)
+    return out_x, out_y, new_direction
 
 
 class CoordinateSystem:
@@ -428,6 +458,8 @@ class Circle:
 
     def get_perpendicular_vector_at_point(self, x, y):
         return [x - self.origo_x, y - self.origo_y]
+
+
 
     def draw(self, color='yellow', width=None):
         if width is None:
