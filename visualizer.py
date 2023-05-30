@@ -1,5 +1,5 @@
 import tkinter as tk
-from matrix_calculations import solve_system_of_2_equations, dot_product
+from matrix_calculations import solve_system_of_2_equations
 from solve_polynomial import main as solvpol
 from solve_polynomial import evaluate as eval_pol
 from math import pi, atan, sqrt, sin, cos
@@ -388,7 +388,7 @@ class Line:
         self.line_width = 1
 
         # variable for the physics.py extension
-        self.active_physics = False
+        self.physics_type = 'static'
 
     def add_coordinate_system_reference(self, coordinate_system):
         self.cs = coordinate_system
@@ -443,7 +443,7 @@ class Circle:
         self.line_width = 1
 
         # variable for the physics.py extension
-        self.active_physics = False
+        self.physics_type = 'static'
 
     def add_coordinate_system_reference(self, cs):
         self.cs = cs
@@ -458,8 +458,6 @@ class Circle:
 
     def get_perpendicular_vector_at_point(self, x, y):
         return [x - self.origo_x, y - self.origo_y]
-
-
 
     def draw(self, color='yellow', width=None):
         if width is None:
@@ -504,8 +502,7 @@ class OrderedPolynomial:
         self.line_width = 1
 
         # variable for the physics.py extension
-        self.active_physics = False
-
+        self.physics_type = 'static'
 
     def add_coordinate_system_reference(self, cs):
         self.cs = cs

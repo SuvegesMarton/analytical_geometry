@@ -1,4 +1,5 @@
 from visualizer import *
+from matrix_calculations import dot_product, vector_to_unit_vector
 import time
 
 DESIRED_FPS = 50
@@ -14,13 +15,16 @@ class PhysicsEngine:
         # net acceleration experienced by the inertia system
         self.system_acceleration = [0, 0]
 
-        # self.add_external_acceleration(0, -9.81) # add gravity
+        self.add_external_acceleration(0, -9.81)  # add gravity
 
-        self.active_physics_elements = []
-        self.static_elements = []
+        self.moving_physics_elements = []  # moving objects
+        self.special_elements = []   # springs, maybe later others
+        self.static_elements = []  # lines, non-moving circles, polynomials
         for element in self.cs.elements:
-            if element.active_physics is True:
-                self.active_physics_elements.append(element)
+            if element.physics_type == 'moving':
+                self.moving_physics_elements.append(element)
+            elif element.physics_type == 'special':
+                self.special_elements.append(element)
             else:
                 self.static_elements.append(element)
 
@@ -37,7 +41,7 @@ class PhysicsEngine:
         average_seconds_between_frames = sum(time_differences)/len(time_differences)
         if frame_count % 200 == 0:
             print('fps:', int(1 / average_seconds_between_frames))
-        for element in self.active_physics_elements:
+        for element in self.moving_physics_elements:
             element.undraw()
             element.draw()
 
@@ -47,7 +51,7 @@ class PhysicsEngine:
 
     def update(self, time_passed):
         # recalculate all velocities from acceleration and applied forces.
-        for body in self.active_physics_elements:
+        for body in self.moving_physics_elements:
             # add constant acceleration to all velocities
             body.velocity_x += self.system_acceleration[0] * time_passed / 1000
             body.velocity_y += self.system_acceleration[1] * time_passed / 1000
@@ -59,35 +63,37 @@ class PhysicsEngine:
             body.new_y = body.origo_y + body.velocity_y * time_passed / 1000
 
         # check for bounces on active objects.
-        for body in self.active_physics_elements:
-            for element in self.active_physics_elements:
-                if body == element:
+        for body in self.moving_physics_elements:
+            if body.collide is False:
+                continue
+            for element in self.moving_physics_elements:
+                if body == element or element.collide is False:
                     continue
                 if element.type == 'ball':
                     # calculate distance
                     distance = ((body.new_x - element.new_x)**2 + (body.new_y - element.new_y)**2)**0.5
                     if distance < body.radius + element.radius:
+                        # all calculations here done according to https://www.youtube.com/watch?v=1L2g4ZqmFLQ (25:00)
                         # calculate the relative speed of the body (compared to the element)
                         relative_speed_x = body.velocity_x - element.velocity_x
                         relative_speed_y = body.velocity_y - element.velocity_y
                         # calculate the vector between the to ball's centers
-                        normal_vector = [body.new_x - element.new_x, body.new_y - element.new_y]
+                        normal_vector = vector_to_unit_vector([body.new_x - element.new_x, body.new_y - element.new_y])
                         # calculate the speed at which the to objects are approaching each other
-                        dot_product_value = dot_product([relative_speed_x, relative_speed_y],
-                                                                      normal_vector)
-                        '''
-                        body.velocity_x = 0
-                        body.velocity_y = 0
-                        element.velocity_x = 0
-                        element.velocity_y = 0
-                        body.new_x = body.origo_x
-                        body.new_y = body.origo_y
-                        element.new_x = element.origo_x
-                        element.new_y = element.origo_y
-                        '''
+                        dot_product_value = dot_product([relative_speed_x, relative_speed_y], normal_vector)
+
+                        impulse = -(1 + body.elasticity*element.elasticity)*dot_product_value/\
+                                   (1/body.mass + 1/element.mass)
+                        body.velocity_x += normal_vector[0] * impulse / body.mass
+                        body.velocity_y += normal_vector[1] * impulse / body.mass
+                        body.new_x, body.new_y = body.origo_x, body.origo_y
+
+                        element.velocity_x -= normal_vector[0] * impulse / element.mass
+                        element.velocity_y -= normal_vector[1] * impulse / element.mass
+                        element.new_x, element.new_y = element.origo_x, element.origo_y
 
         # check for bounces on static objects, and move.
-        for body in self.active_physics_elements:
+        for body in self.moving_physics_elements:
             # check for collision with static elements
             for element in self.static_elements:
                 distance = point_element_distance(body.new_x, body.new_y, element)
@@ -113,26 +119,38 @@ class PhysicsEngine:
             # for all bodies after finishing applying forces, checking for collision on active and static elements:
             body.origo_x, body.origo_y = body.new_x, body.new_y
 
+
 class Ball(Circle):
     # equation of the circle: (x - origo_x) ** 2 + (y - origo_y) ** 2 = radius ** 2
-    def __init__(self, start_x, start_y, collide=False, radius=1):
+    def __init__(self, start_x, start_y, radius=1, start_velocity=None, collide=True):
         Circle.__init__(self, origo_x=start_x, origo_y=start_y, radius=radius)
         self.type = 'ball'
-        self.velocity_x, self.velocity_y = 0, 0
+        if start_velocity is None:
+            self.velocity_x, self.velocity_y = 0, 0
+        else:
+            self.velocity_x, self.velocity_y = start_velocity[0], start_velocity[1]
+
         self.new_x, self.new_y = None, None
 
         # objects effected by physics will always collide with static elements. Two such 'active' objects will collide,
         # if both of them are set collide=True
-        self.active_physics = True
+        self.physics_type = 'moving'
         self.collide = collide
 
         # constants effecting physical behaviour
         self.elasticity = 1.0
         self.mass = 10
 
-    def update_location(self):
-        self.origo_x = self.new_x
-        self.origo_y = self.new_y
+
+class Spring:
+    def __init__(self, attached_object_1, attached_object_2, standard_length=10, spring_force=5):
+        self.attached_object_1 = attached_object_1
+        self.attached_object_2 = attached_object_2
+        self.standard_length = standard_length
+        self.spring_force = spring_force
+
+        self.physics_type = 'special'
+
 
 
 if __name__ == '__main__':
@@ -140,15 +158,14 @@ if __name__ == '__main__':
     frame_count = 0
 
     # first add static elements
+    coord_system.add_element(Line(x=0, y=1, c=-30))
+    coord_system.add_element(Line(x=1, y=0, c=-30))
+    coord_system.add_element(Line(x=1, y=0, c=30))
 
     # then add moving elements
-    b = Ball(-20, 0.5, radius=1)
-    coord_system.add_element(b)
-    b.velocity_x = 5
-
-    b = Ball(20, 0, radius=1)
-    coord_system.add_element(b)
-    b.velocity_x = -5
+    for j in range(3):
+        for i in range(-10, 10):
+            coord_system.add_element(Ball(i*2.5, j*5, start_velocity=[-5, 0]))
 
     p = PhysicsEngine(coord_system, window)
     p.simulate()
