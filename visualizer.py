@@ -1,5 +1,5 @@
 import tkinter as tk
-from matrix_calculations import solve_system_of_2_equations
+from matrix_calculations import solve_system_of_2_equations, dot_product
 from solve_polynomial import main as solvpol
 from solve_polynomial import evaluate as eval_pol
 from math import pi, atan, sqrt, sin, cos

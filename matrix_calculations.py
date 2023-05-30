@@ -1,5 +1,6 @@
 import copy
 
+
 def calculate_determinant(matrix):
     # filter non-square matrices, since they have no determinant
     if len(matrix) != len(matrix[0]):
@@ -111,6 +112,20 @@ def solve_system_of_2_equations(x1, y1, c1, x2, y2, c2):
     inverse_matrix = calculate_inverse_of_matrix(input_matrix)
     vector_of_solutions = matrix_vector_multiplication(inverse_matrix, output_vector)
     return vector_of_solutions
+
+
+def dot_product(vector_1, vector_2):
+    dot_product = 0
+    for i in range(len(vector_1)):
+        dot_product += vector_1[i] * vector_2[i]
+    return dot_product
+
+
+def vector_to_unit_vector(vector):
+    original_length = sum([i**2 for i in vector]) ** 0.5
+    unit_vector = [i/original_length for i in vector]
+    return unit_vector
+
 
 
 if __name__ == "__main__":
