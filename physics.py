@@ -4,8 +4,6 @@ import time
 
 DESIRED_FPS = 50
 MOVING_AVERAGE_LENGTH = 5
-last_time = time.time()
-time_differences = []
 
 
 class PhysicsEngine:
@@ -28,35 +26,47 @@ class PhysicsEngine:
             else:
                 self.static_elements.append(element)
 
+        self.frame_count = 0
+        self.last_time = time.time()
+        self.time_differences = []
+
     # add acceleration to the inertia system (gravity)
     def add_external_acceleration(self, vector_x, vector_y):
         self.system_acceleration[0] += vector_x
         self.system_acceleration[1] += vector_y
 
     def simulate(self):
-        global frame_count, last_time, time_differences
-        frame_count += 1
+        self.frame_count += 1
         now = time.time()
-        time_differences = time_differences[-MOVING_AVERAGE_LENGTH:] + [now - last_time]
+        time_differences = self.time_differences[-MOVING_AVERAGE_LENGTH:] + [now - self.last_time]
         average_seconds_between_frames = sum(time_differences)/len(time_differences)
-        if frame_count % 200 == 0:
+        if self.frame_count % 200 == 0:
             print('fps:', int(1 / average_seconds_between_frames))
-        for element in self.moving_physics_elements:
+        for element in self.moving_physics_elements + self.special_elements:
             element.undraw()
             element.draw()
 
         self.update(1000*average_seconds_between_frames)
         self.window.after(1, self.simulate)
-        last_time = now
+        self.last_time = now
 
     def update(self, time_passed):
-        # recalculate all velocities from acceleration and applied forces.
+        # calculate forces applied by special elements, and add acceleration(F=ma).
+        for element in self.special_elements:
+            if element.type == 'spring':
+                force1, force2 = element.get_force_applied()
+                element.attached_object_1.velocity_x += force1[0] / element.attached_object_1.mass * time_passed / 1000
+                element.attached_object_1.velocity_y += force1[1] / element.attached_object_1.mass * time_passed / 1000
+                element.attached_object_2.velocity_x += force2[0] / element.attached_object_2.mass * time_passed / 1000
+                element.attached_object_2.velocity_y += force2[1] / element.attached_object_2.mass * time_passed / 1000
+
+
+        # add constant acceleration.
         for body in self.moving_physics_elements:
             # add constant acceleration to all velocities
             body.velocity_x += self.system_acceleration[0] * time_passed / 1000
             body.velocity_y += self.system_acceleration[1] * time_passed / 1000
 
-            # add acceleration by forces, such as spring-forces.
 
             # set new 'predicted' coordinates for the bodies
             body.new_x = body.origo_x + body.velocity_x * time_passed / 1000
@@ -138,7 +148,7 @@ class Ball(Circle):
         self.collide = collide
 
         # constants effecting physical behaviour
-        self.elasticity = 1.0
+        self.elasticity = 1
         self.mass = 10
 
 
@@ -147,25 +157,67 @@ class Spring:
         self.attached_object_1 = attached_object_1
         self.attached_object_2 = attached_object_2
         self.standard_length = standard_length
-        self.spring_force = spring_force
+        self.spring_force = spring_force  #Newtons per units stretched/squeezed
 
+        self.type = 'spring'
         self.physics_type = 'special'
 
+        self.visualization = None
+        self.line_width = 1
+
+    def get_endpoints(self):
+        x_1, y_1 = None, None
+        if self.attached_object_1.type == 'ball' or self.attached_object_1.type == 'circle':
+            x_1, y_1 = self.attached_object_1.origo_x, self.attached_object_1.origo_y
+        x_2, y_2 = None, None
+        if self.attached_object_2.type == 'ball' or self.attached_object_2.type == 'circle':
+            x_2, y_2 = self.attached_object_2.origo_x, self.attached_object_2.origo_y
+        return x_1, y_1, x_2, y_2
+
+    def get_force_magnitude(self):
+        x_1, y_1, x_2, y_2 = self.get_endpoints()
+        current_length = ((x_1 - x_2)**2 + (y_1 - y_2)**2) ** 0.5
+        total_force = (self.standard_length - current_length) * self.spring_force
+        return total_force
+
+    def get_force_applied(self):
+        x_1, y_1, x_2, y_2 = self.get_endpoints()
+        force_magnitude = self.get_force_magnitude()
+        force_direction = vector_to_unit_vector([x_1 - x_2, y_1 - y_2])
+        force_1 = [force_direction[0] * force_magnitude, force_direction[1] * force_magnitude]
+        force_2 = [-force_direction[0] * force_magnitude, -force_direction[1] * force_magnitude]
+        return force_1, force_2
+
+    def add_coordinate_system_reference(self, cs):
+        self.cs = cs
+
+    def draw(self):
+        x_1, y_1, x_2, y_2 = self.get_endpoints()
+
+        self.visualization = self.cs.canvas.create_line(
+                self.cs.system_coord_to_gui_coord(x_1, y_1),
+                self.cs.system_coord_to_gui_coord(x_2, y_2),
+                fill='lime', width=self.line_width)
+
+    def undraw(self):
+        self.cs.canvas.delete(self.visualization)
 
 
 if __name__ == '__main__':
     coord_system, window = setup()
-    frame_count = 0
 
     # first add static elements
     coord_system.add_element(Line(x=0, y=1, c=-30))
     coord_system.add_element(Line(x=1, y=0, c=-30))
     coord_system.add_element(Line(x=1, y=0, c=30))
 
-    # then add moving elements
-    for j in range(3):
-        for i in range(-10, 10):
-            coord_system.add_element(Ball(i*2.5, j*5, start_velocity=[-5, 0]))
+    # then add moving and special elements
+    b1 = Ball(10, 10)
+    b2 = Ball(-10, 5)
+    spr = Spring(b1, b2)
+    coord_system.add_element(b1)
+    coord_system.add_element(b2)
+    coord_system.add_element(spr)
 
     p = PhysicsEngine(coord_system, window)
     p.simulate()

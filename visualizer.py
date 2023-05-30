@@ -173,14 +173,15 @@ def point_element_distance(x, y, element):
         distance = abs(x*element.x_coefficient + y*element.y_coefficient - element.c) / (element.x_coefficient ** 2 + element.y_coefficient**2) ** 0.5
         return distance
     else:
-        y_at_x = element.evaluate_at_x(x)
+        return 10e10
+'''        y_at_x = element.evaluate_at_x(x)
         if y_at_x is None:
             return 10e10
         elif not isinstance(y_at_x, list):
             y_at_x = [y_at_x]
         for i in range(len(y_at_x)):
             y_at_x[i] = abs(y_at_x[i] - y)
-        return min(y_at_x)
+        return min(y_at_x)'''
 
 
 def get_bounce_direction_vector_from_vectors(surface_perpendicular_x, surface_perpendicular_y, incoming_x, incoming_y):
