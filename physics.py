@@ -15,7 +15,7 @@ class PhysicsEngine:
         self.system_acceleration = [0, 0]
 
         self.add_external_acceleration(0, -9.81)  # add gravity
-        self.atmosphere_density = 0.2
+        self.atmosphere_density = 0.3
 
         self.moving_physics_elements = []  # moving objects
         self.special_elements = []   # springs, maybe later others
@@ -43,7 +43,7 @@ class PhysicsEngine:
         time_differences = self.time_differences[-MOVING_AVERAGE_LENGTH:] + [now - self.last_time]
         average_seconds_between_frames = sum(time_differences)/len(time_differences)
         if self.frame_count % 200 == 0:
-            print('fps:', int(1 / average_seconds_between_frames))
+            print('fps:', int(1 / (average_seconds_between_frames+10e-10)))
         for element in self.moving_physics_elements + self.special_elements:
             element.undraw()
             element.draw()
@@ -173,7 +173,7 @@ class Ball(Circle):
 
 
 class Spring:
-    def __init__(self, attached_object_1, attached_object_2, standard_length=10, spring_force=5):
+    def __init__(self, attached_object_1, attached_object_2, standard_length=10, spring_force=5, coloring_limit=1000):
         self.attached_object_1 = attached_object_1
         self.attached_object_2 = attached_object_2
         self.standard_length = standard_length
@@ -184,6 +184,7 @@ class Spring:
 
         self.visualization = None
         self.line_width = 1
+        self.coloring_limit = coloring_limit
 
     def calculate_endpoints(self):
         x_1, y_1 = None, None
@@ -212,7 +213,7 @@ class Spring:
 
     def color_from_force(self):
         force = abs(self.get_force_magnitude())
-        border = 50
+        border = self.coloring_limit
         if force >= border:
             rgb = (255, 0, 0)
         elif force == 0:
