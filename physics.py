@@ -1,6 +1,7 @@
 from visualizer import *
 from matrix_calculations import dot_product, vector_to_unit_vector
 import time
+from math import e
 
 DESIRED_FPS = 50
 MOVING_AVERAGE_LENGTH = 5
@@ -165,25 +166,24 @@ class Spring:
         self.visualization = None
         self.line_width = 1
 
-    def get_endpoints(self):
+    def calculate_endpoints(self):
         x_1, y_1 = None, None
         if self.attached_object_1.type == 'ball' or self.attached_object_1.type == 'circle':
             x_1, y_1 = self.attached_object_1.origo_x, self.attached_object_1.origo_y
         x_2, y_2 = None, None
         if self.attached_object_2.type == 'ball' or self.attached_object_2.type == 'circle':
             x_2, y_2 = self.attached_object_2.origo_x, self.attached_object_2.origo_y
-        return x_1, y_1, x_2, y_2
+        self.x_1, self.y_1, self.x_2, self.y_2 = x_1, y_1, x_2, y_2
 
     def get_force_magnitude(self):
-        x_1, y_1, x_2, y_2 = self.get_endpoints()
-        current_length = ((x_1 - x_2)**2 + (y_1 - y_2)**2) ** 0.5
+        current_length = ((self.x_1 - self.x_2)**2 + (self.y_1 - self.y_2)**2) ** 0.5
         total_force = (self.standard_length - current_length) * self.spring_force
         return total_force
 
     def get_force_applied(self):
-        x_1, y_1, x_2, y_2 = self.get_endpoints()
+        self.calculate_endpoints()
         force_magnitude = self.get_force_magnitude()
-        force_direction = vector_to_unit_vector([x_1 - x_2, y_1 - y_2])
+        force_direction = vector_to_unit_vector([self.x_1 - self.x_2, self.y_1 - self.y_2])
         force_1 = [force_direction[0] * force_magnitude, force_direction[1] * force_magnitude]
         force_2 = [-force_direction[0] * force_magnitude, -force_direction[1] * force_magnitude]
         return force_1, force_2
@@ -191,13 +191,26 @@ class Spring:
     def add_coordinate_system_reference(self, cs):
         self.cs = cs
 
+    def color_from_force(self):
+        force = abs(self.get_force_magnitude())
+        border = 50
+        if force >= border:
+            rgb = (255, 0, 0)
+        elif force == 0:
+            rgb = (0, 255, 0)
+        else:
+            rgb = (int(255*force/border), int(255*(border-force)/border), 0)
+            print(rgb)
+        return "#%02x%02x%02x" % rgb
+
     def draw(self):
-        x_1, y_1, x_2, y_2 = self.get_endpoints()
+        self.calculate_endpoints()
+        color = self.color_from_force()
 
         self.visualization = self.cs.canvas.create_line(
-                self.cs.system_coord_to_gui_coord(x_1, y_1),
-                self.cs.system_coord_to_gui_coord(x_2, y_2),
-                fill='lime', width=self.line_width)
+                self.cs.system_coord_to_gui_coord(self.x_1, self.y_1),
+                self.cs.system_coord_to_gui_coord(self.x_2, self.y_2),
+                fill=color, width=self.line_width)
 
     def undraw(self):
         self.cs.canvas.delete(self.visualization)
