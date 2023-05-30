@@ -432,7 +432,7 @@ class Line:
 
 class Circle:
     # equation of the circle: (x - origo_x) ** 2 + (y - origo_y) ** 2 = radius ** 2
-    def __init__(self, origo_x=0, origo_y=0, radius=1):
+    def __init__(self, origo_x, origo_y, radius=1):
         self.visualization = None
         self.type = 'circle'
 
@@ -577,7 +577,7 @@ if __name__ == '__main__':
     coord_system, window = setup()
     l = Line()
     coord_system.add_element(l)
-    c = Circle()
+    c = Circle(0, 0)
     coord_system.add_element(c)
 
     window.mainloop()

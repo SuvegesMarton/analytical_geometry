@@ -15,6 +15,7 @@ class PhysicsEngine:
         self.system_acceleration = [0, 0]
 
         self.add_external_acceleration(0, -9.81)  # add gravity
+        self.atmosphere_density = 0.2
 
         self.moving_physics_elements = []  # moving objects
         self.special_elements = []   # springs, maybe later others
@@ -61,13 +62,30 @@ class PhysicsEngine:
                 element.attached_object_2.velocity_x += force2[0] / element.attached_object_2.mass * time_passed / 1000
                 element.attached_object_2.velocity_y += force2[1] / element.attached_object_2.mass * time_passed / 1000
 
-
-        # add constant acceleration.
+        # add constant acceleration, and air resistance
         for body in self.moving_physics_elements:
             # add constant acceleration to all velocities
             body.velocity_x += self.system_acceleration[0] * time_passed / 1000
+
             body.velocity_y += self.system_acceleration[1] * time_passed / 1000
 
+            # subtract air resistance.
+            # F = 0.5*density*(v**2)*drag_coeff_of_body*cross_sectional_area = m*a
+            drag_x = (0.5*self.atmosphere_density*(body.velocity_x**2)*body.drag_coefficient*body.radius*2) /\
+                               body.mass * time_passed / 1000
+
+            drag_y = (0.5 * self.atmosphere_density * (
+                        body.velocity_y ** 2) * body.drag_coefficient * body.radius * 2) / \
+                               body.mass * time_passed / 1000
+            if body.velocity_x < 0:
+                body.velocity_x += drag_x
+            elif body.velocity_x > 0:
+                body.velocity_x -= drag_x
+
+            if body.velocity_y < 0:
+                body.velocity_y += drag_y
+            elif body.velocity_y > 0:
+                body.velocity_y -= drag_y
 
             # set new 'predicted' coordinates for the bodies
             body.new_x = body.origo_x + body.velocity_x * time_passed / 1000
@@ -134,7 +152,7 @@ class PhysicsEngine:
 class Ball(Circle):
     # equation of the circle: (x - origo_x) ** 2 + (y - origo_y) ** 2 = radius ** 2
     def __init__(self, start_x, start_y, radius=1, start_velocity=None, collide=True):
-        Circle.__init__(self, origo_x=start_x, origo_y=start_y, radius=radius)
+        Circle.__init__(self, start_x, start_y, radius=radius)
         self.type = 'ball'
         if start_velocity is None:
             self.velocity_x, self.velocity_y = 0, 0
@@ -151,6 +169,7 @@ class Ball(Circle):
         # constants effecting physical behaviour
         self.elasticity = 1
         self.mass = 10
+        self.drag_coefficient = 1
 
 
 class Spring:
@@ -200,7 +219,6 @@ class Spring:
             rgb = (0, 255, 0)
         else:
             rgb = (int(255*force/border), int(255*(border-force)/border), 0)
-            print(rgb)
         return "#%02x%02x%02x" % rgb
 
     def draw(self):
@@ -225,12 +243,8 @@ if __name__ == '__main__':
     coord_system.add_element(Line(x=1, y=0, c=30))
 
     # then add moving and special elements
-    b1 = Ball(10, 10)
-    b2 = Ball(-10, 5)
-    spr = Spring(b1, b2)
+    b1 = Ball(0, 0)
     coord_system.add_element(b1)
-    coord_system.add_element(b2)
-    coord_system.add_element(spr)
 
     p = PhysicsEngine(coord_system, window)
     p.simulate()
