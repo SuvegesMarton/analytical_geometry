@@ -15,7 +15,7 @@ class PhysicsEngine:
         self.system_acceleration = [0, 0]
 
         self.add_external_acceleration(0, -9.81)  # add gravity
-        self.atmosphere_density = 0.3
+        self.atmosphere_density = 0.2
 
         self.moving_physics_elements = []  # moving objects
         self.special_elements = []   # springs, maybe later others
@@ -167,7 +167,7 @@ class Ball(Circle):
         self.collide = collide
 
         # constants effecting physical behaviour
-        self.elasticity = 1
+        self.elasticity = 0.99
         self.mass = 10
         self.drag_coefficient = 1
 
